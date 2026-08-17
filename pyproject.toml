@@ -32,7 +32,7 @@ Source = "https://github.com/FlordaWeave/floagent-python"
 
 [project.optional-dependencies]
 streamlit = ["streamlit>=1.40,<2"]
-test = ["pytest>=8,<9"]
+test = ["pytest>=8,<10"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
