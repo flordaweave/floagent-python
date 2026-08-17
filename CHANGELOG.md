@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.1 - 2026-08-16
+
+- Allow Streamlit apps to customize the user-facing authentication service name.
+
 ## 0.1.0 - 2026-08-16
 
 - Add a dependency-free FloAgent handoff and token-refresh client.

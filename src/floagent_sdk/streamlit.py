@@ -78,13 +78,18 @@ class StreamlitHandoff:
         redirect_pages: Mapping[str, Any],
         fallback_redirect: str = "/",
         session_key: str = SESSION_KEY,
+        service_name: str = "FloAgent",
     ) -> None:
         if fallback_redirect not in redirect_pages:
             raise ValueError("fallback_redirect must exist in redirect_pages.")
+        if not isinstance(service_name, str) or not service_name.strip():
+            raise ValueError("service_name must be a non-empty string.")
+        normalized_service_name = service_name.strip()
         self.client = client
         self.redirect_pages = dict(redirect_pages)
         self.fallback_redirect = fallback_redirect
         self.session_key = session_key
+        self.service_name = normalized_service_name
 
     def require_session(self) -> FloAgentSession:
         import streamlit as st
@@ -97,7 +102,7 @@ class StreamlitHandoff:
         if session is None:
             message = st.session_state.pop(
                 ERROR_KEY,
-                "Open this app from FloAgent to sign in.",
+                f"Open this app from {self.service_name} to sign in.",
             )
             st.error(message)
             st.stop()
@@ -107,7 +112,10 @@ class StreamlitHandoff:
                 session = self.client.refresh(session)
             except HandoffError:
                 st.session_state.pop(self.session_key, None)
-                st.error("Your FloAgent session expired. Reopen the app from FloAgent.")
+                st.error(
+                    f"Your {self.service_name} session expired. "
+                    f"Reopen the app from {self.service_name}."
+                )
                 st.stop()
             st.session_state[self.session_key] = session.to_dict()
 
@@ -121,7 +129,7 @@ class StreamlitHandoff:
             session.profile.get("display_name")
             or session.profile.get("name")
             or session.profile.get("profile_id")
-            or "FloAgent user"
+            or f"{self.service_name} user"
         )
         with st.sidebar:
             st.caption(f"Signed in as {profile_name}")
@@ -142,16 +150,22 @@ class StreamlitHandoff:
 
     def _complete_handoff(self, st: Any, token_values: list[str]) -> None:
         if len(token_values) != 1:
-            self._fail_handoff(st, "The FloAgent sign-in link is invalid.")
+            self._fail_handoff(
+                st, f"The {self.service_name} sign-in link is invalid."
+            )
             return
 
         api_base_values = _get_query_values(st.query_params, "api_base_url")
         if len(api_base_values) > 1:
-            self._fail_handoff(st, "The FloAgent sign-in link is invalid.")
+            self._fail_handoff(
+                st, f"The {self.service_name} sign-in link is invalid."
+            )
             return
         redirect_values = _get_query_values(st.query_params, "redirect")
         if len(redirect_values) > 1:
-            self._fail_handoff(st, "The FloAgent sign-in link is invalid.")
+            self._fail_handoff(
+                st, f"The {self.service_name} sign-in link is invalid."
+            )
             return
 
         try:
@@ -160,7 +174,7 @@ class StreamlitHandoff:
                 api_base_url=api_base_values[0] if api_base_values else None,
             )
         except HandoffError as error:
-            self._fail_handoff(st, error.user_message)
+            self._fail_handoff(st, self._user_message(error))
             return
 
         target = parse_redirect_target(
@@ -182,6 +196,19 @@ class StreamlitHandoff:
         st.session_state[ERROR_KEY] = message
         _strip_handoff_query(st.query_params)
         st.rerun()
+
+    def _user_message(self, error: HandoffError) -> str:
+        if error.status in {400, 401, 409}:
+            return (
+                f"The {self.service_name} sign-in link is invalid, expired, "
+                "or already used."
+            )
+        if error.status == 403:
+            return "You are not allowed to open this app."
+        return (
+            f"{self.service_name} sign-in is temporarily unavailable. "
+            "Please try again."
+        )
 
     def _load_session(self, st: Any) -> FloAgentSession | None:
         raw_session = st.session_state.get(self.session_key)

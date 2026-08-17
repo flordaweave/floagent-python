@@ -159,6 +159,30 @@ def test_missing_handoff_stops_with_actionable_message(monkeypatch):
     assert st.errors == ["Open this app from FloAgent to sign in."]
 
 
+def test_custom_service_name_is_used_in_user_messages(monkeypatch):
+    st = FakeStreamlit({})
+    monkeypatch.setitem(sys.modules, "streamlit", st)
+    auth = StreamlitHandoff(
+        HandoffClient("https://api.example.com"),
+        redirect_pages={"/": "home-page"},
+        service_name="Mera",
+    )
+
+    with pytest.raises(Stop):
+        auth.require_session()
+    assert st.errors == ["Open this app from Mera to sign in."]
+
+
+@pytest.mark.parametrize("service_name", [" ", None])
+def test_service_name_must_not_be_empty(service_name):
+    with pytest.raises(ValueError, match="service_name"):
+        StreamlitHandoff(
+            HandoffClient("https://api.example.com"),
+            redirect_pages={"/": "home-page"},
+            service_name=service_name,
+        )
+
+
 def test_repeated_handoff_token_is_rejected_without_network(monkeypatch):
     st = FakeStreamlit({"token": ["one", "two"]})
     monkeypatch.setitem(sys.modules, "streamlit", st)

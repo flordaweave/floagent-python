@@ -42,6 +42,7 @@ auth = StreamlitHandoff(
         "/": home,
         "/admin": admin,
     },
+    service_name="Mera",
 )
 session = auth.require_session()
 auth.render_sidebar(session)
@@ -64,6 +65,8 @@ from making authentication requests to attacker-controlled destinations.
 Register the external app with FloAgent using the Streamlit app root as its
 `handoff_url`. Redirect paths must be listed in `redirect_pages`. Redirect
 query parameters such as `task_id` are restored after page switching.
+Set `service_name` when the host product uses a different user-facing brand;
+package and protocol names remain unchanged.
 
 Access and refresh tokens are kept in Streamlit Session State and are never
 written to browser storage. When the browser session is lost, the user must
